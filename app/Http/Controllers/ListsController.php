@@ -44,7 +44,8 @@ class ListsController
             return $list;
         });
 
-        return redirect()->route('lists.show', $list, 303);
+        // Keep the redirect on the browser's origin when TLS terminates upstream.
+        return response('', 303, ['Location' => route('lists.show', $list, absolute: false)]);
     }
 
     public function index(Request $request)

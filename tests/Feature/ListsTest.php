@@ -29,7 +29,10 @@ class ListsTest extends TestCase
         $response = $this->post('/lists', ['category' => 'grocery', 'name' => 'Saturday groceries'])->assertStatus(303);
         $this->withUnencryptedCookie('utilynk_guest', $response->getCookie('utilynk_guest', false)->getValue());
 
-        return ShoppingList::firstOrFail()->id;
+        $id = ShoppingList::firstOrFail()->id;
+        $response->assertHeader('Location', '/lists/'.$id);
+
+        return $id;
     }
 
     private function operation(string $type, string $item, int $base, array $data): array
