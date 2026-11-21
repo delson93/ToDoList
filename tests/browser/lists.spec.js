@@ -162,3 +162,40 @@ test('the owner can cancel or confirm list deletion', async ({ page }) => {
     await expect(page).toHaveURL(/\/lists$/)
     await expect(page.getByRole('link', { name: 'List to delete' })).toHaveCount(0)
 })
+
+test('the narrow layout fits the More menu and supports repeated voice attempts', async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 720 })
+    await page.addInitScript(() => {
+        let attempts = 0
+        window.SpeechRecognition = class {
+            start() {
+                const attempt = ++attempts
+                setTimeout(() => {
+                    if (attempt === 2) this.onerror({ error: 'not-allowed' })
+                    else this.onresult({ resultIndex: 0, results: [{ isFinal: true, 0: { transcript: attempt === 1 ? 'Rice' : 'Milk' } }] })
+                    this.onend()
+                }, 50)
+            }
+            abort() { this.onend() }
+        }
+    })
+    await page.goto('/create')
+    await page.getByRole('button', { name: 'Create list' }).click()
+    const more = page.locator('summary').filter({ hasText: /^More$/ })
+    await more.click()
+    const menu = await page.locator('.list-actions .menu').boundingBox()
+    expect(menu.x).toBeGreaterThanOrEqual(0)
+    expect(menu.x + menu.width).toBeLessThanOrEqual(320)
+    await expect(page.getByRole('button', { name: 'Delete list' })).toBeInViewport()
+    await more.click()
+
+    const speak = page.getByRole('button', { name: 'Speak', exact: true })
+    const input = page.getByLabel('Item name')
+    await speak.click()
+    await expect(input).toHaveValue('Rice')
+    await speak.click()
+    await expect(page.getByText('Allow speech recognition in your browser, or use the microphone on your keyboard.')).toBeVisible()
+    await speak.click()
+    await expect(input).toHaveValue('Milk')
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320)
+})

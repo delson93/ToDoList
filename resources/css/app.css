@@ -191,7 +191,13 @@ textarea { min-height: 68px }
 @media (max-width: 540px) {
     .nav-features, .header-cta { display: none }
     .footer-row, .list-heading { align-items: flex-start; flex-direction: column }
+    .list-actions { position: relative; justify-content: flex-start; width: 100% }
+    .list-actions .overflow { position: static }
+    .list-actions .menu { left: 0; right: auto; width: min(15rem, 100%); min-width: 0 }
     .item-details { padding-inline: .4rem }
 }
-@media (max-width: 370px) { .add-form .voice { display: none } }
+@media (max-width: 440px) {
+    .add-form.has-voice { display: grid; grid-template-columns: minmax(0, 1fr) auto }
+    .add-form.has-voice input { grid-column: 1 / -1 }
+}
 @media (prefers-reduced-motion: no-preference) { .button { transition: background-color 120ms ease } }

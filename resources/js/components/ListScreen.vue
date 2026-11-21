@@ -79,15 +79,71 @@ async function restoreItem() {
     }
 }
 
+const listening = ref(false)
+const voiceMessage = ref('')
+let recognition
+let voiceTimeout
+
+function releaseRecognition() {
+    clearTimeout(voiceTimeout)
+    recognition = null
+    listening.value = false
+}
+
+function cancelRecognition() {
+    const active = recognition
+    releaseRecognition()
+    active?.abort()
+}
+
 function dictate() {
+    if (recognition) {
+        cancelRecognition()
+        voiceMessage.value = ''
+        return
+    }
+
+    voiceMessage.value = ''
     try {
-        const recognition = new voice()
-        recognition.lang = document.documentElement.lang || 'en'
-        recognition.onresult = event => { name.value = event.results[0][0].transcript.slice(0, 150); nameInput.value?.focus() }
-        recognition.onerror = () => { note.value = 'Voice input is unavailable. You can type the item name.' }
-        recognition.start()
+        const session = new voice()
+        recognition = session
+        session.lang = document.documentElement.lang || navigator.language
+        session.continuous = false
+        session.interimResults = false
+        let heardSpeech = false
+
+        session.onresult = event => {
+            if (recognition !== session) return
+            const result = event.results[event.resultIndex ?? 0]
+            if (!result?.isFinal) return
+            const transcript = result[0]?.transcript?.trim()
+            if (transcript) {
+                name.value = transcript.slice(0, 150)
+                heardSpeech = true
+            }
+        }
+        session.onerror = event => {
+            if (recognition !== session) return
+            clearTimeout(voiceTimeout)
+            voiceTimeout = setTimeout(cancelRecognition, 1000)
+            voiceMessage.value = event.error === 'not-allowed' || event.error === 'service-not-allowed'
+                ? 'Allow speech recognition in your browser, or use the microphone on your keyboard.'
+                : 'Voice input didn’t catch that. Try again or use the microphone on your keyboard.'
+        }
+        session.onend = () => {
+            if (recognition !== session) return
+            releaseRecognition()
+            if (!heardSpeech && !voiceMessage.value) voiceMessage.value = 'No speech was captured. Try again or type the item name.'
+        }
+        listening.value = true
+        voiceTimeout = setTimeout(() => {
+            cancelRecognition()
+            voiceMessage.value = 'Voice input timed out. Try again or type the item name.'
+        }, 15000)
+        session.start()
     } catch {
-        note.value = 'Voice input is unavailable. You can type the item name.'
+        releaseRecognition()
+        voiceMessage.value = 'Voice input couldn’t start. Try again or use the microphone on your keyboard.'
     }
 }
 
@@ -124,6 +180,7 @@ onMounted(async () => {
 onUnmounted(() => {
     alive = false
     clearInterval(poll)
+    cancelRecognition()
     store.stop()
     echo?.disconnect()
     window.removeEventListener('online', onConnection)
@@ -219,13 +276,14 @@ async function change(suffix, options) {
             </details>
         </section>
         <div v-if="level >= 2 && !shopping" class="add-dock">
-            <form class="add-form" @submit.prevent="add">
+            <form class="add-form" :class="{ 'has-voice': voice }" @submit.prevent="add">
                 <label class="sr-only" for="new-item">Item name</label>
                 <input id="new-item" ref="nameInput" v-model="name" list="item-suggestions" maxlength="150" autocomplete="off" placeholder="What do you need?" required>
                 <datalist id="item-suggestions"><option v-for="suggestion in cachedSuggestions" :key="suggestion" :value="suggestion" /></datalist>
-                <button v-if="voice" type="button" class="button secondary voice" @click="dictate">Speak</button>
+                <button v-if="voice" type="button" class="button secondary voice" @click="dictate">{{ listening ? 'Cancel voice' : 'Speak' }}</button>
                 <button class="button primary" :disabled="adding"><span aria-hidden="true">+</span> Add item</button>
             </form>
+            <p v-if="listening || voiceMessage" class="tiny muted" role="status">{{ voiceMessage || 'Listening…' }}</p>
         </div>
         <div class="sr-only" role="status">{{ note }}</div>
         <div v-if="undo" class="notice undo">Deleted {{ undo.name }}. <button class="button secondary" @click="restoreItem">Undo</button></div>
