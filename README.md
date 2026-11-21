@@ -21,4 +21,6 @@ npx playwright install chromium
 npm run test:browser
 ```
 
+To include the iPhone WebKit emulation suite, install WebKit with `npx playwright install webkit`, then run `UTILYNK_TEST_WEBKIT=1 npm run test:browser`.
+
 See [DEPLOYMENT.md](DEPLOYMENT.md) for aaPanel and GitHub Actions setup, [SECURITY.md](SECURITY.md) for the access and data model, [OFFLINE.md](OFFLINE.md) for sync semantics, and [PRODUCTION.md](PRODUCTION.md) for release verification.

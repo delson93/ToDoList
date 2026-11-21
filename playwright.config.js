@@ -9,6 +9,7 @@ export default defineConfig({
     projects: [
         { name: 'desktop Chromium', use: { ...devices['Desktop Chrome'], launchOptions: { executablePath: binary } } },
         { name: 'mobile Chromium', use: { ...devices['Pixel 7'], launchOptions: { executablePath: binary } } },
+        ...(process.env.UTILYNK_TEST_WEBKIT === '1' ? [{ name: 'mobile WebKit', use: { ...devices['iPhone 13'] } }] : []),
     ],
     webServer: {
         command: 'php artisan serve --host=127.0.0.1 --port=8765 --no-reload',

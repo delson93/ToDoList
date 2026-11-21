@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 
-test('guest shopping flow, sharing, keyboard access and durable offline edits', async ({ page, context, browser }) => {
+test('guest shopping flow, sharing, keyboard access and durable offline edits', async ({ page, context, browser, isMobile }) => {
     await page.goto('/')
     await expect(page.getByRole('heading', { level: 1 })).toContainText('shopping lists')
     await page.getByRole('link', { name: 'Create Free List' }).click()
@@ -37,10 +37,15 @@ test('guest shopping flow, sharing, keyboard access and durable offline edits', 
     await expect(page.getByRole('dialog')).toHaveCount(0)
     await context.setOffline(true)
     await field.fill('Oat milk')
-    await field.press('Enter')
+    if (isMobile) await page.getByRole('button', { name: 'Add item' }).tap()
+    else await field.press('Enter')
     await expect(page.getByRole('checkbox', { name: 'Complete Oat milk' })).toBeVisible()
-    await page.getByRole('checkbox', { name: 'Complete Rice' }).focus()
-    await page.keyboard.press('Space')
+    const rice = page.getByRole('checkbox', { name: 'Complete Rice' })
+    if (isMobile) await rice.tap()
+    else {
+        await rice.focus()
+        await page.keyboard.press('Space')
+    }
     await expect(page.getByRole('checkbox', { name: 'Restore Rice' })).toBeChecked()
     await page.reload()
     await expect(page.getByRole('checkbox', { name: 'Restore Rice' })).toBeChecked()
@@ -93,6 +98,50 @@ test('downloads photos and keeps shopping mode usable offline', async ({ page, b
         await expect(other.getByRole('checkbox', { name: 'Complete Bread' })).toBeVisible()
         await other.getByRole('button', { name: 'Exit Shopping Mode' }).click()
         await expect(other.getByRole('combobox', { name: 'Item name' })).toBeVisible()
+    } finally {
+        await recipient.close()
+    }
+})
+
+test('an offline edit remains recoverable when a collaborator changes the same item', async ({ page, context, browser }) => {
+    await page.goto('/create')
+    await page.getByRole('button', { name: 'Create list' }).click()
+    await page.getByRole('combobox', { name: 'Item name' }).fill('Pasta')
+    await page.getByRole('button', { name: 'Add item' }).click()
+    await expect(page.getByRole('checkbox', { name: 'Complete Pasta' })).toBeVisible()
+    await expect(page.getByRole('status').filter({ hasText: 'Available offline' })).toBeVisible({ timeout: 15000 })
+    await page.getByRole('button', { name: 'Share' }).click()
+    await page.getByRole('button', { name: 'Create invitation link' }).click()
+    const link = page.getByRole('textbox', { name: 'Invitation link' })
+    await expect(link).toHaveValue(/\/join#[a-f0-9]{64}$/)
+    const recipient = await browser.newContext()
+    try {
+        const other = await recipient.newPage()
+        await other.goto(await link.inputValue())
+        await other.getByRole('button', { name: 'Open list' }).click()
+        await expect(other.getByRole('checkbox', { name: 'Complete Pasta' })).toBeVisible()
+        await context.setOffline(true)
+        await page.getByRole('button', { name: 'Details for Pasta' }).click()
+        await page.getByRole('spinbutton', { name: 'Quantity' }).fill('3')
+        await page.getByRole('button', { name: 'Save changes' }).click()
+        await expect(page.getByText('Offline · 1 unsynced')).toBeVisible()
+        await other.getByRole('button', { name: 'Details for Pasta' }).click()
+        await other.getByRole('spinbutton', { name: 'Quantity' }).fill('4')
+        await other.getByRole('button', { name: 'Save changes' }).click()
+
+        const stateUrl = new URL(other.url())
+        stateUrl.pathname = '/api' + stateUrl.pathname
+        const serverQuantity = async () => {
+            const response = await other.request.get(stateUrl.href)
+            return Number((await response.json()).items[0].quantity)
+        }
+        await expect.poll(serverQuantity).toBe(4)
+        await context.setOffline(false)
+        await expect(page.getByText('A change needs your attention.')).toBeVisible()
+        await expect.poll(serverQuantity).toBe(4)
+        await page.getByRole('button', { name: 'Apply my change over the latest version' }).click()
+        await expect.poll(serverQuantity).toBe(3)
+        await expect(page.getByText('A change needs your attention.')).toHaveCount(0)
     } finally {
         await recipient.close()
     }

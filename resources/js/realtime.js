@@ -2,7 +2,7 @@ import Echo from 'laravel-echo'
 import Pusher from 'pusher-js'
 import { api } from './api'
 
-export function connect(key, listId, update) {
+export function connect(key, listId, participantId, update) {
     window.Pusher = Pusher
     const echo = new Echo({
         broadcaster: 'reverb',
@@ -26,6 +26,6 @@ export function connect(key, listId, update) {
             },
         },
     })
-    echo.private('lists.' + listId).listen('.list.changed', update)
+    echo.private(`lists.${listId}.${participantId}`).listen('.list.changed', update)
     return echo
 }

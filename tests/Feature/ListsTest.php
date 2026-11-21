@@ -176,8 +176,10 @@ class ListsTest extends TestCase
             'broadcasting.connections.reverb.app_id' => 'test-id',
         ]);
         $list = $this->createList();
-        $request = ['channel_name' => "private-lists.$list", 'socket_id' => '12.34'];
+        $actor = $this->getJson("/api/lists/$list")->assertOk()->json('actor.id');
+        $request = ['channel_name' => "private-lists.$list.$actor", 'socket_id' => '12.34'];
         $this->postJson('/api/broadcasting/auth', $request)->assertOk()->assertJsonStructure(['auth']);
+        $this->postJson('/api/broadcasting/auth', ['channel_name' => "private-lists.$list.".($actor + 1), 'socket_id' => '12.34'])->assertForbidden();
         $this->withUnencryptedCookie('utilynk_guest', '');
         $this->postJson('/api/broadcasting/auth', $request)->assertNotFound();
     }

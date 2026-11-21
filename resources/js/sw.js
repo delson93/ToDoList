@@ -9,7 +9,8 @@ self.addEventListener('install', event => {
 self.addEventListener('activate', event => {
     event.waitUntil((async () => {
         const old = (await caches.keys()).filter(key => key.startsWith('utilynk-shell-') && key !== CACHE)
-        await Promise.all(old.map(key => caches.delete(key)))
+        // Existing tabs may still load a lazy chunk from the previous release.
+        await Promise.all(old.slice(0, -1).map(key => caches.delete(key)))
         await self.clients.claim()
     })())
 })
@@ -34,5 +35,7 @@ self.addEventListener('fetch', event => {
         }))
     } else if (RESOURCES.includes(url.pathname) && url.pathname !== '/offline') {
         event.respondWith(caches.open(CACHE).then(async cache => await cache.match(request) || fetch(request)))
+    } else if (url.pathname.startsWith('/build/assets/')) {
+        event.respondWith(caches.match(request).then(response => response || fetch(request)))
     }
 })

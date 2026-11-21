@@ -37,7 +37,7 @@ export async function cachePhotos(state) {
             if (!response.ok || !response.headers.get('Content-Type')?.startsWith('image/webp')) {
                 throw new Error('A photo has not downloaded yet.')
             }
-            await db.put('photos', { listId, url, blob: await response.blob() })
+            await db.put('photos', { listId, url, bytes: await response.arrayBuffer() })
         }))
     }
 }

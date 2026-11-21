@@ -82,7 +82,7 @@ location ~ ^/apps?/ {
 }
 ```
 
-Set `UTILYNK_REVERB_WORKER=1` when the deploy process should tell Supervisor-managed Reverb to restart. Access to subscription authorization is determined by list membership. An installed application can always fall back to periodic updates.
+Set `UTILYNK_REVERB_WORKER=1` when the deploy process should tell Supervisor-managed Reverb to restart. Each subscription requires authorization for the participant’s own channel. An installed application can always fall back to periodic updates.
 
 Google login requires a Google OAuth client with the exact redirect URI `https://list.utilynk.com/account/google/callback`. Set its ID, secret, and redirect in .env. Confirm credentials in a test environment before public release.
 

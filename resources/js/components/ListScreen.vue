@@ -113,7 +113,7 @@ onMounted(async () => {
     if (props.reverb && state.value && alive) {
         try {
             const { connect } = await import('../realtime')
-            if (alive) echo = connect(props.reverb, props.listId, onConnection)
+            if (alive) echo = connect(props.reverb, props.listId, state.value.actor.id, onConnection)
         } catch {
             // Conditional polling keeps collaboration working without a socket.
         }

@@ -117,10 +117,12 @@ class SharingController
 
     public function broadcast(Request $request)
     {
-        $data = $request->validate(['channel_name' => 'required|regex:/^private-lists\.[a-f0-9-]{36}$/', 'socket_id' => 'required|regex:/^[0-9]+\.[0-9]+$/']);
+        $data = $request->validate(['channel_name' => 'required|regex:/^private-lists\.[a-f0-9-]{36}\.[1-9][0-9]{0,18}$/', 'socket_id' => 'required|regex:/^[0-9]+\.[0-9]+$/']);
         abort_unless(config('broadcasting.default') === 'reverb', 404);
-        $list = ShoppingList::findOrFail(substr($data['channel_name'], strlen('private-lists.')));
-        $this->access->participant($request, $list);
+        [, $listId, $participantId] = explode('.', $data['channel_name']);
+        $list = ShoppingList::findOrFail($listId);
+        $participant = $this->access->participant($request, $list);
+        abort_unless((string) $participant->id === $participantId, 403);
 
         return response()->json(json_decode(app(Factory::class)->connection('reverb')->getPusher()->authorizeChannel($data['channel_name'], $data['socket_id']), true, 512, JSON_THROW_ON_ERROR));
     }

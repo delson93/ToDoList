@@ -56,8 +56,10 @@ jobs:
           php artisan migrate --force
           php artisan route:cache
           php artisan view:cache
-      - run: npx playwright install --with-deps chromium
+      - run: npx playwright install --with-deps chromium webkit
       - run: npm run test:browser
+        env:
+          UTILYNK_TEST_WEBKIT: '1'
 
   deploy:
     if: github.event_name == 'workflow_dispatch' && inputs.deploy && github.ref == 'refs/heads/main'

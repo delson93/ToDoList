@@ -139,7 +139,10 @@ class SyncController
         DB::afterCommit(function () use ($list) {
             if (config('broadcasting.default') === 'reverb') {
                 try {
-                    event(new ListChanged($list->id));
+                    $participants = $list->participants()->active()->pluck('id')->all();
+                    if ($participants && ! $list->expires_at?->isPast()) {
+                        event(new ListChanged($list->id, $participants));
+                    }
                 } catch (\Throwable $exception) {
                     report($exception);
                 }

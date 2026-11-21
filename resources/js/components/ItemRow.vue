@@ -25,7 +25,7 @@ watch(() => props.item.photo, async url => {
     try {
         const entry = await (await database()).get('photos', [props.listId, url])
         if (request !== photoRequest) return
-        if (entry) objectUrl = URL.createObjectURL(entry.blob)
+        if (entry) objectUrl = URL.createObjectURL(entry.blob ?? new Blob([entry.bytes], { type: 'image/webp' }))
         photo.value = objectUrl || (navigator.onLine ? url : '')
     } catch {
         if (request === photoRequest && navigator.onLine) photo.value = url
