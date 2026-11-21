@@ -1,0 +1,91 @@
+name: Verify and deploy Utilynk Lists
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: Activate the verified main revision on aaPanel
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: local-ci-password
+          MYSQL_DATABASE: utilynk_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -plocal-ci-password"
+          --health-interval=10s --health-timeout=5s --health-retries=10
+    steps:
+      - uses: actions/checkout@v6
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, pdo_sqlite, pdo_mysql, gd, curl, xml, zip
+          coverage: none
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+      - run: composer install --prefer-dist --no-interaction
+      - run: npm ci
+      - run: npm run build
+      - run: php artisan test
+        env:
+          DB_CONNECTION: mysql
+          DB_HOST: 127.0.0.1
+          DB_DATABASE: utilynk_test
+          DB_USERNAME: root
+          DB_PASSWORD: local-ci-password
+      - run: |
+          cp .env.example .env
+          touch database/database.sqlite
+          php artisan key:generate
+          php artisan migrate --force
+          php artisan route:cache
+          php artisan view:cache
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:browser
+
+  deploy:
+    if: github.event_name == 'workflow_dispatch' && inputs.deploy && github.ref == 'refs/heads/main'
+    needs: verify
+    runs-on: ubuntu-latest
+    environment: production
+    concurrency:
+      group: utilynk-production
+      cancel-in-progress: false
+    steps:
+      - name: Activate verified release through SSH
+        env:
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          SSH_HOST: ${{ secrets.DEPLOY_HOST }}
+          SSH_USER: ${{ secrets.DEPLOY_USER }}
+          SSH_PORT: ${{ secrets.DEPLOY_PORT }}
+          SSH_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+          DEPLOY_ROOT: ${{ secrets.DEPLOY_ROOT }}
+          REVISION: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          umask 077
+          ssh_dir="$(mktemp -d)"
+          trap 'rm -rf -- "$ssh_dir"' EXIT
+          printf '%s\n' "$SSH_KEY" > "$ssh_dir/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$ssh_dir/known_hosts"
+          [[ "$DEPLOY_ROOT" =~ ^/[a-zA-Z0-9/_-]+$ && "$REVISION" =~ ^[a-f0-9]{40}$ ]]
+          ssh -i "$ssh_dir/key" -p "${SSH_PORT:-22}" -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
+            -o "UserKnownHostsFile=$ssh_dir/known_hosts" "$SSH_USER@$SSH_HOST" \
+            "bash '$DEPLOY_ROOT/bin/activate-release.sh' '$DEPLOY_ROOT' '$REVISION'"

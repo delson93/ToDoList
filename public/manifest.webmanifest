@@ -1,0 +1,17 @@
+{
+    "id": "/lists",
+    "name": "Utilynk Lists",
+    "short_name": "Utilynk Lists",
+    "description": "Private shopping lists and checklists you can share and use offline.",
+    "start_url": "/lists",
+    "scope": "/",
+    "display": "standalone",
+    "background_color": "#fcfdfa",
+    "theme_color": "#13744d",
+    "icons": [
+        {"src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+        {"src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+        {"src": "/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+    ],
+    "shortcuts": [{"name": "My lists", "url": "/lists", "icons": [{"src": "/icons/icon-192.png", "sizes": "192x192"}]}]
+}
