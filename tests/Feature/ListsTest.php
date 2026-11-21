@@ -249,4 +249,25 @@ class ListsTest extends TestCase
         $this->getJson("/api/lists/$list")->assertNotFound();
         $this->postJson('/api/invitations/accept', ['token' => $token])->assertNotFound();
     }
+
+    public function test_account_forms_keep_redirects_same_origin_behind_https_proxy(): void
+    {
+        config(['app.url' => 'https://list.utilynk.com']);
+        $origin = 'http://list.utilynk.com';
+        $account = $origin.'/account';
+        $this->get($account)->assertOk();
+        $this->from($account)->post($account, ['mode' => 'register'])
+            ->assertHeader('Location', '/account')->assertSessionHasErrors('email');
+        $credentials = ['email' => 'proxy@example.com', 'password' => 'test-password-123'];
+        $this->post($account, ['mode' => 'register', 'name' => 'Proxy tester'] + $credentials)
+            ->assertHeader('Location', '/account');
+        $this->assertAuthenticated();
+        $this->post($account.'/logout')->assertHeader('Location', '/account');
+        $this->assertGuest();
+        $this->from($account)->post($account, ['mode' => 'login', 'password' => 'invalid'] + $credentials)
+            ->assertHeader('Location', '/account')->assertSessionHasErrors('email');
+        $this->post($account, ['mode' => 'login'] + $credentials)
+            ->assertHeader('Location', '/account');
+        $this->assertAuthenticated();
+    }
 }
