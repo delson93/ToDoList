@@ -146,3 +146,19 @@ test('an offline edit remains recoverable when a collaborator changes the same i
         await recipient.close()
     }
 })
+
+test('the owner can cancel or confirm list deletion', async ({ page }) => {
+    await page.goto('/create')
+    await page.getByRole('textbox', { name: 'List name' }).fill('List to delete')
+    await page.getByRole('button', { name: 'Create list' }).click()
+    await expect(page.getByRole('heading', { name: 'List to delete' })).toBeVisible()
+    await page.locator('summary').filter({ hasText: /^More$/ }).click()
+    const remove = page.getByRole('button', { name: 'Delete list' })
+    page.once('dialog', dialog => dialog.dismiss())
+    await remove.click()
+    await expect(page.getByRole('heading', { name: 'List to delete' })).toBeVisible()
+    page.once('dialog', dialog => dialog.accept())
+    await remove.click()
+    await expect(page).toHaveURL(/\/lists$/)
+    await expect(page.getByRole('link', { name: 'List to delete' })).toHaveCount(0)
+})

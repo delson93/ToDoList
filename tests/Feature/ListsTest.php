@@ -230,4 +230,23 @@ class ListsTest extends TestCase
         $this->assertSame('grocery', $copy->category);
         $this->assertEquals($list->items()->count(), $copy->items()->count());
     }
+
+    public function test_only_owner_can_delete_list_and_remove_shared_access(): void
+    {
+        $list = $this->createList();
+        $owner = $this->unencryptedCookies['utilynk_guest'];
+        $token = $this->invite($list, 'collaborate');
+        $this->join($token);
+        $guest = $this->unencryptedCookies['utilynk_guest'];
+
+        $this->deleteJson("/api/lists/$list")->assertForbidden();
+        $this->withUnencryptedCookie('utilynk_guest', $owner);
+        $this->deleteJson("/api/lists/$list")->assertNoContent();
+        $this->get('/lists')->assertDontSee('Saturday groceries');
+        $this->get("/lists/$list")->assertNotFound();
+
+        $this->withUnencryptedCookie('utilynk_guest', $guest);
+        $this->getJson("/api/lists/$list")->assertNotFound();
+        $this->postJson('/api/invitations/accept', ['token' => $token])->assertNotFound();
+    }
 }

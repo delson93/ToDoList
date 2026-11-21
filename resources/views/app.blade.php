@@ -7,7 +7,7 @@
             <div class="section-head"><h1>My lists</h1><a class="text-link" href="/account">Account</a></div>
             @if($lists->isEmpty())<p class="muted">Create a list or open a shared invitation to get started.</p>@endif
             <ul class="library">
-                @foreach($lists as $list)<li><a href="{{ route('lists.show', $list) }}">{{ $list->name }} <span aria-hidden="true">→</span></a></li>@endforeach
+                @foreach($lists as $list)<li data-library-list-id="{{ $list->id }}"><a href="{{ route('lists.show', $list) }}">{{ $list->name }} <span aria-hidden="true">→</span></a></li>@endforeach
             </ul>
         @endif
         <div id="app" data-screen="{{ $screen }}" data-list-id="{{ $listId ?? '' }}" data-reverb="{{ config('broadcasting.default') === 'reverb' ? config('broadcasting.connections.reverb.key') : '' }}" data-labels='@json(__('lists'))' data-theme="{{ auth()->check() ? \Illuminate\Support\Facades\DB::table('user_preferences')->where('user_id', auth()->id())->value('theme') : '' }}"></div>

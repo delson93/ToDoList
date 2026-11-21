@@ -48,6 +48,20 @@ class ListsController
         return response('', 303, ['Location' => route('lists.show', $list, absolute: false)]);
     }
 
+    public function destroy(Request $request, ShoppingList $list)
+    {
+        DB::transaction(function () use ($request, $list) {
+            $list = ShoppingList::whereKey($list->id)->lockForUpdate()->firstOrFail();
+            $owner = $this->access->participant($request, $list, 'owner');
+
+            $list->update(['expires_at' => now()->subSecond()]);
+            DB::table('recurring_schedules')->where('list_id', $list->id)->delete();
+            SyncController::changed($list, $owner->name, 'list.deleted');
+        });
+
+        return response()->noContent();
+    }
+
     public function index(Request $request)
     {
         $identity = $this->access->identity($request);

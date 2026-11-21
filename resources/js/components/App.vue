@@ -28,8 +28,10 @@ onMounted(async () => {
         try {
             const db = await database()
             unsynced.value = [...new Set((await db.getAll('operations')).map(entry => entry.listId))]
+            const authorized = new Set([...document.querySelectorAll('[data-library-list-id]')].map(entry => entry.dataset.libraryListId))
             saved.value = (await db.getAll('lists')).filter(({ list, offline }) =>
-                offline && (!list.expires_at || Date.parse(list.expires_at) > Date.now()))
+                offline && (offlineLibrary.value || authorized.has(list.id))
+                && (!list.expires_at || Date.parse(list.expires_at) > Date.now()))
         } catch {
             error.value = 'Saved lists could not be loaded on this device.'
         }

@@ -1,6 +1,7 @@
 <script setup>
 import { computed, defineAsyncComponent, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { api } from '../api'
+import { removeOfflineList } from '../storage'
 import { listState } from '../list-state'
 import ItemRow from './ItemRow.vue'
 
@@ -132,6 +133,27 @@ onUnmounted(() => {
     document.removeEventListener('visibilitychange', onVisibility)
 })
 
+const deletingList = ref(false)
+
+async function deleteList() {
+    if (!online.value || deletingList.value) return
+    if (!window.confirm(`Delete “${state.value.list.name}” for everyone? This cannot be undone in the app.`)) return
+    deletingList.value = true
+    try {
+        await api(store.endpoint, { method: 'DELETE' })
+    } catch (error) {
+        message.value = error.message || 'Could not delete the list. Try again.'
+        deletingList.value = false
+        return
+    }
+    store.stop()
+    try {
+        await removeOfflineList(props.listId)
+    } finally {
+        location.assign('/lists')
+    }
+}
+
 async function change(suffix, options) {
     const response = await api(store.endpoint + suffix, options)
     void store.synchronize()
@@ -156,6 +178,7 @@ async function change(suffix, options) {
                         <button class="button link" @click="shopping = true; showShare = false; showSettings = false">Shopping Mode</button>
                         <button class="button link" @click="summary = !summary">Shopping summary</button>
                         <button v-if="level === 4" class="button link" @click="showSettings = !showSettings">List settings</button>
+                        <button v-if="level === 4" class="button danger" :disabled="!online || deletingList" @click="deleteList">Delete list</button>
                         <a class="button link" href="/lists">Offline lists &amp; installation</a>
                     </div>
                 </details>

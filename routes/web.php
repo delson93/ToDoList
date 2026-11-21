@@ -42,6 +42,7 @@ Route::middleware(PrivateResponse::class)->group(function () {
         Route::get('/', [ListsController::class, 'state'])->middleware('throttle:150,1,list-read');
         Route::post('/operations', SyncController::class)->middleware('throttle:240,1,list-sync');
         Route::post('/template', [TemplatesController::class, 'store'])->middleware(['auth', 'throttle:10,1,list-template']);
+        Route::delete('/', [ListsController::class, 'destroy'])->middleware('throttle:30,1,list-management');
         Route::patch('/settings', SettingsController::class)->middleware('throttle:30,1,list-management');
         Route::post('/invitations', [SharingController::class, 'invite'])->middleware('throttle:20,1,invite-create');
         Route::delete('/invitations/{invitation}', [SharingController::class, 'revoke'])->whereUuid('invitation')->middleware('throttle:30,1,list-management');
