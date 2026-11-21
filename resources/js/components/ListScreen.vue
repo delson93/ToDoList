@@ -287,15 +287,15 @@ async function change(suffix, options) {
         </div>
         <div class="sr-only" role="status">{{ note }}</div>
         <div v-if="undo" class="notice undo">Deleted {{ undo.name }}. <button class="button secondary" @click="restoreItem">Undo</button></div>
-        <section class="item-section">
-            <h2>Pending <span class="count">{{ pendingItems.length }}</span></h2>
+        <section class="item-section pending-section">
+            <h2><span aria-hidden="true">○</span> Pending <span class="count">{{ pendingItems.length }}</span></h2>
             <p v-if="!pendingItems.length" class="empty">{{ items.length ? 'Everything is checked off.' : 'No items yet.' }}</p>
             <ul v-else class="items">
                 <ItemRow v-for="item in pendingItems" :key="item.id" :item="item" :list-id="listId" :labels="labels" :participants="state.participants" :can-toggle="level >= 1" :shopping="shopping" @toggle="toggle(item)" @details="selected = item.id" />
             </ul>
         </section>
         <section class="item-section completed-section">
-            <h2>Completed <span class="count">{{ completed.length }}</span></h2>
+            <h2><span aria-hidden="true">✓</span> Completed <span class="count">{{ completed.length }}</span></h2>
             <p v-if="!completed.length" class="empty">Completed items will appear here.</p>
             <ul v-else class="items">
                 <ItemRow v-for="item in completed" :key="item.id" :item="item" :list-id="listId" :labels="labels" :participants="state.participants" :can-toggle="level >= 1" :shopping="shopping" @toggle="toggle(item)" @details="selected = item.id" />
